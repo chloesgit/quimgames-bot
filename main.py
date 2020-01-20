@@ -8,8 +8,9 @@ import time
 import telepot
 
 # Configuration
-token = '912339355:AAEuBF_UbbJskNUTvHIUwTDZsNijJxEKwzE'
-chat_id = '-1001433683644' #Kwala Familia
+token = '912339355:AAEp_47mRVri9kDRfjWdJIGKTdizrNHM0YY'
+#chat_id = '-1001433683644' #Kwala Familia
+chat_id = '-325590372' #Bot Testing
 
 # Database
 con = sqlite3.connect('scores.db')
@@ -26,6 +27,38 @@ con.commit()
 
 
 # Commands
+def bot_testing(bot):
+    bot.sendMessage(chat_id = chat_id, text="Ceci est un test")
+
+def bot_add_points(bot, command):
+    (points, player, sport) = command[3], command[1], command[2]
+    sent_message = "Ajout de {0} points a {1} pour {2}".format(points, player, sport)
+    conn = sqlite3.connect('scores.db', timeout = 1000)
+    with conn:
+        cur = conn.cursor()
+        timestamp = str(datetime.datetime.now())
+        print(timestamp)
+        year = timestamp[:4]
+        print(year)
+        requete = 'INSERT INTO tableauScore (timestamp, year, player, sport, points) VALUES ("{0}", "{1}", "{2}", "{3}", "{4}");'.format(timestamp, year, player, sport, points)
+        cur.execute(requete)
+    bot.sendMessage(chat_id = chat_id, text=sent_message)
+
+def bot_look_points(bot, command):
+    player = command[1]
+    
+    conn = sqlite3.connect('scores.db', timeout = 1000)
+    with conn:
+        cur = conn.cursor()
+        timestamp = str(datetime.datetime.now())
+        year = timestamp[:4]
+        #requete = 'SELECT (sport, points) FROM tableauScore WHERE year={0} AND player={1}'.format(year, player)
+        requete = 'SELECT distinct(sport, points) FROM tableauScore WHERE tableauScore.year = {0} ;'.format(year)
+        result_fetched = cur.execute(requete).fetchone()
+        print(result_fetched)
+    sent_message = "{} a des points !".format(player)
+    bot.sendMessage(chat_id = chat_id, text=sent_message)
+
 def classement(bot, update):
     chat_id = update.message.chat_id
 
@@ -51,15 +84,7 @@ def score(bot, update, player):
         sent_message = result
         bot.send_message(chat_id=chat_id, text=sent_message, parse_mode='Markdown')
 
-def points(bot, update, player, sport, points):
-    chat_id = update.message.chat_id
-    sent_message = "Ajout de {0} points a {1} pour {2}".format(points, player, sport)
-    conn = sqlite3.connect('scores.db', timeout = 1000)
-    with conn:
-        cur = conn.cursor()
-        requete = 'INSERT INTO tableauScore (timestamp, year, player, sport, points) VALUES ("{0}", "{1}", "{2}", "{3}", "{4}");'.format(str(datetime.datetime.now()), str(str(datetime.datetime.now())[:4]), player, sport, points)
-        cur.execute(requete)
-    bot.send_message(chat_id=chat_id, text=sent_message, parse_mode='Markdown')
+
 
 def penalite(bot, update, player, points):
     chat_id = update.message.chat_id
@@ -89,10 +114,17 @@ if __name__ == '__main__':
 """
 def handle(msg):
     print(msg)
-    #
-    #if msg['text'].split(' ')[0] in ['/add']:
-    #    command = command.split('@')[0]
-    #    bot.sendMessage(msg['text'])
+    if 'text' in msg:
+        command = msg['text'].split(' ')
+    if command[0] in ['/test']:
+        print(command)
+        bot_testing(bot)
+    elif command[0] in ['/ajouter']:
+        print(command)
+        bot_add_points(bot, command)
+    elif command[0] in ['/regarder']:
+        print(command)
+        bot_look_points(bot, command)
 
 try:
     bot = telepot.Bot(token)
