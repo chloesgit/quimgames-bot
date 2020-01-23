@@ -6,6 +6,7 @@ import datetime
 import time
 
 import telepot
+from emoji import emojize
 
 # Configuration
 token = '912339355:AAEp_47mRVri9kDRfjWdJIGKTdizrNHM0YY'
@@ -28,11 +29,11 @@ con.commit()
 
 # Commands
 def bot_testing(bot):
-    bot.sendMessage(chat_id = chat_id, text="Ceci est un test")
+    bot.sendMessage(chat_id = chat_id, text="Ceci est un *test*", parse_mode='Markdown')
 
 def bot_add_points(bot, command):
     (points, player, sport) = command[3], command[1], command[2]
-    sent_message = "Ajout de {0} points a {1} pour {2}".format(points, player, sport)
+    sent_message = "Ajout de {0} points a {1} pour {2}".format(points, maj(player), sport)
     conn = sqlite3.connect('scores.db', timeout = 1000)
     with conn:
         cur = conn.cursor()
@@ -44,7 +45,19 @@ def bot_add_points(bot, command):
         cur.execute(requete)
     bot.sendMessage(chat_id = chat_id, text=sent_message)
 
-def bot_look_points(bot, command):
+def bot_remove_points(bot, command):
+    (points, player) = str(-abs(int(command[2]))), command[1]
+    sent_message = "Pénalité !\n{0} a pris une amende de {1} points...".format(player, points,)
+    conn = sqlite3.connect('scores.db', timeout = 1000)
+    with conn:
+        cur = conn.cursor()
+        timestamp = str(datetime.datetime.now())
+        year = timestamp[:4]
+        requete = 'INSERT INTO tableauScore (timestamp, year, player, sport, points) VALUES ("{0}", "{1}", "{2}", "Penalite", "{3}");'.format(timestamp, year, player, points)
+        cur.execute(requete)
+    bot.sendMessage(chat_id = chat_id, text=sent_message)
+
+def bot_player(bot, command):
     player = command[1]
     
     conn = sqlite3.connect('scores.db', timeout = 1000)
@@ -52,79 +65,69 @@ def bot_look_points(bot, command):
         cur = conn.cursor()
         timestamp = str(datetime.datetime.now())
         year = timestamp[:4]
-        #requete = 'SELECT (sport, points) FROM tableauScore WHERE year={0} AND player={1}'.format(year, player)
-        requete = 'SELECT distinct(sport, points) FROM tableauScore WHERE tableauScore.year = {0} ;'.format(year)
-        result_fetched = cur.execute(requete).fetchone()
+        requete = 'SELECT sport, points FROM tableauScore WHERE tableauScore.year={0} AND tableauScore.player={1};'.format(year, player)
+        result = cur.execute(requete)
+        print(result)
+        result_fetched = result.fetchone()
         print(result_fetched)
-    sent_message = "{} a des points !".format(player)
+    sent_message = emojize("Scores de {}:\nblah".format(player), use_aliases=True)
     bot.sendMessage(chat_id = chat_id, text=sent_message)
 
-def classement(bot, update):
-    chat_id = update.message.chat_id
-
+def bot_leaderboard(bot, command):
+    
     conn = sqlite3.connect('scores.db', timeout = 1000)
     with conn:
         cur = conn.cursor()
-        requete = 'SELECT add(*) from tableauScore where annee = "{}" groupby player;'.format(str(datetime.datetime.now())[:4])
-        result = cur.execute(requete).fetchone()
+        timestamp = str(datetime.datetime.now())
+        year = timestamp[:4]
+        requete = 'SELECT player, sum(points) FROM tableauScore WHERE tableauScore.year = {0} GROUP BY player;'.format(year)
+        scores_list = cur.execute(requete).fetchall()
+        print(scores_list)
+        scores_list.sort(key=lambda x: x[1]) #Trie
+        scores_list = scores_list[::-1] #Dans le bon ordre
 
-        sent_message = result
+    sent_message = ":trophy: *Classement général* :trophy:\n\n"
+    n = 0
+    for (player, points) in scores_list:
+        n += 1
+        sent_message+="{} - {} : {} points\n".format(n, maj(player), points)
+    sent_message = emojize(sent_message, use_aliases=True)
+    bot.sendMessage(chat_id = chat_id, text=sent_message, parse_mode='Markdown')
 
-        bot.send_message(chat_id=chat_id, text=sent_message, parse_mode='Markdown')
-
-def score(bot, update, player):
-    chat_id = update.message.chat_id
-
-    conn = sqlite3.connect('scores.db', timeout = 1000)
-    with conn:
-        cur = conn.cursor()
-        requete = 'SELECT * from tableauScore where annee = "{0}" and player = "{1}";'.format(str(datetime.datetime.now())[:4], player)
-        result = cur.execute(requete).fetchone()
-
-        sent_message = result
-        bot.send_message(chat_id=chat_id, text=sent_message, parse_mode='Markdown')
-
-
-
-def penalite(bot, update, player, points):
-    chat_id = update.message.chat_id
-    sent_message = "Penalite de {0} points a {1} !".format(points, player)
-
-    conn = sqlite3.connect('scores.db', timeout = 1000)
-    with conn:
-        cur = conn.cursor()
-        requete = 'INSERT INTO tableauScore (timestamp, year, player, sport, points) VALUES ("{0}", "{1}", "{2}", "Penalite", "{3}");'.format(str(datetime.datetime.now()), str(datetime.datetime.now()[:4]), player, -points)
-        cur.execute(requete)
-    bot.send_message(chat_id=chat_id, text=sent_message, parse_mode='Markdown')
+def maj(s):
+    return s[0].upper()+s[1:].lower()
 
 
-"""
-def main():
-    updater = Updater("912339355:AAEuBF_UbbJskNUTvHIUwTDZsNijJxEKwzE", use_context=True)
-    dp = updater.dispatcher
-    dp.add_handler(CommandHandler('classement', classement))
-    dp.add_handler(CommandHandler('score', score))
-    dp.add_handler(CommandHandler('points', points))
-    dp.add_handler(CommandHandler('penalite', penalite))
-    updater.start_polling()
-    updater.idle()
-
-if __name__ == '__main__':
-    main()
-"""
 def handle(msg):
     print(msg)
     if 'text' in msg:
-        command = msg['text'].split(' ')
+        command = msg['text'].lower().replace('@', ' ').split(' ')
+        if 'quimgames_bot' in command:
+            command.remove('quimgames_bot')
     if command[0] in ['/test']:
         print(command)
         bot_testing(bot)
     elif command[0] in ['/ajouter']:
         print(command)
-        bot_add_points(bot, command)
-    elif command[0] in ['/regarder']:
+        if len(command) >= 4:
+            bot_add_points(bot, command)
+        else:
+            bot.sendMessage(chat_id = chat_id, text="Il manque des mots pour cette commande")
+    elif command[0] in ['/penalite']:
         print(command)
-        bot_look_points(bot, command)
+        if len(command) >= 3:
+            bot_remove_points(bot, command)
+        else:
+            bot.sendMessage(chat_id = chat_id, text="Il manque des mots pour cette commande")
+    elif command[0] in ['/score']:
+        print(command)
+        if len(command) >= 2:
+            bot_player(bot, command)
+        else:
+            bot.sendMessage(chat_id = chat_id, text="Il manque des mots pour cette commande")
+    elif command[0] in ['/scores']:
+        print(command)
+        bot_leaderboard(bot, command)
 
 try:
     bot = telepot.Bot(token)
