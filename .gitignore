@@ -1,6 +1,6 @@
 # Custom - don NOT git databases but their dump
 *.db
-config.py
+configBot.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
