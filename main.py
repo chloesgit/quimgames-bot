@@ -4,7 +4,7 @@ import re
 import sqlite3
 import datetime
 import time
-from configBot import TOKEN, CHAT_ID
+from configBot import token, chat_id
 
 import telepot
 from emoji import emojize
