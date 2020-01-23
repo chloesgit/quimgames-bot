@@ -1,4 +1,4 @@
-# Custom
+# Custom - don NOT git databases but their dump
 *.db
 
 # Byte-compiled / optimized / DLL files
