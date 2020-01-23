@@ -1,6 +1,7 @@
 # Custom - don NOT git databases but their dump
 *.db
 configBot.py
+nohup.out
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
