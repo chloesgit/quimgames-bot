@@ -8,11 +8,6 @@ import time
 import telepot
 from emoji import emojize
 
-# Configuration
-token = '912339355:AAEp_47mRVri9kDRfjWdJIGKTdizrNHM0YY'
-#chat_id = '-1001433683644' #Kwala Familia
-chat_id = '-325590372' #Bot Testing
-
 # Database
 con = sqlite3.connect('scores.db')
 cur = con.cursor()
