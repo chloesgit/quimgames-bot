@@ -61,7 +61,7 @@ def bot_player(bot, command):
         cur = conn.cursor()
         timestamp = str(datetime.datetime.now())
         year = timestamp[:4]
-        requete = 'SELECT sport, points FROM tableauScore WHERE tableauScore.year={0} AND tableauScore.player={1};'.format(year, player)
+        requete = "SELECT sport, points FROM tableauScore WHERE tableauScore.year={0} AND tableauScore.player='{1}';".format(year, player)
         result = cur.execute(requete)
         print(result)
         result_fetched = result.fetchone()
