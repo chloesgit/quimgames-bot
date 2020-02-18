@@ -4,13 +4,13 @@ import re
 import sqlite3
 import datetime
 import time
-from configBot import token, chat_id
+from configBot import token, chat_id, database
 
 import telepot
 from emoji import emojize
 
 # Database
-con = sqlite3.connect('scores.db')
+con = sqlite3.connect(database)
 cur = con.cursor()
 cur.execute("""CREATE TABLE IF NOT EXISTS tableauScore (
     timestamp text PRIMARY KEY,
@@ -25,57 +25,69 @@ con.commit()
 
 # Commands
 def bot_testing(bot):
-    bot.sendMessage(chat_id = chat_id, text="Ceci est un *test*", parse_mode='Markdown')
+    bot.sendMessage(chat_id = chat_id, text=emojize("Ceci 🥇 est un <b>test</b>", use_aliases=True), parse_mode='html')
+
 
 def bot_add_points(bot, command):
     (points, player, sport) = command[3], command[1], command[2]
     sent_message = "Ajout de {0} points a {1} pour {2}".format(points, maj(player), sport)
-    conn = sqlite3.connect('scores.db', timeout = 1000)
+    conn = sqlite3.connect(database, timeout = 1000)
     with conn:
         cur = conn.cursor()
         timestamp = str(datetime.datetime.now())
         print(timestamp)
         year = timestamp[:4]
         print(year)
-        requete = 'INSERT INTO tableauScore (timestamp, year, player, sport, points) VALUES ("{0}", "{1}", "{2}", "{3}", "{4}");'.format(timestamp, year, player, sport, points)
+        requete = 'INSERT INTO tableauScore (timestamp, year, player, sport, points) VALUES ("{0}", {1}, "{2}", "{3}", "{4}");'.format(timestamp, year, player, sport, points)
         cur.execute(requete)
     bot.sendMessage(chat_id = chat_id, text=sent_message)
+    bot_table(bot, command)
+
 
 def bot_remove_points(bot, command):
-    (points, player) = str(-abs(int(command[2]))), command[1]
-    sent_message = "Pénalité !\n{0} a pris une amende de {1} points...".format(player, points,)
-    conn = sqlite3.connect('scores.db', timeout = 1000)
+    (points, player) = -abs(int(command[2])), command[1]
+    sent_message = "Pénalité !\n{0} a pris une amende de {1} points...".format(player, points)
+    conn = sqlite3.connect(database, timeout = 1000)
     with conn:
         cur = conn.cursor()
         timestamp = str(datetime.datetime.now())
-        year = timestamp[:4]
-        requete = 'INSERT INTO tableauScore (timestamp, year, player, sport, points) VALUES ("{0}", "{1}", "{2}", "Penalite", "{3}");'.format(timestamp, year, player, points)
+        year = int(timestamp[:4])
+        requete = 'INSERT INTO tableauScore (timestamp, year, player, sport, points) VALUES ("{0}", {1}, "{2}", "Penalite", {3});'.format(timestamp, year, player, points)
         cur.execute(requete)
     bot.sendMessage(chat_id = chat_id, text=sent_message)
+    bot_table(bot, command)
+
 
 def bot_player(bot, command):
     player = command[1]
     
-    conn = sqlite3.connect('scores.db', timeout = 1000)
+    conn = sqlite3.connect(database, timeout = 1000)
     with conn:
         cur = conn.cursor()
         timestamp = str(datetime.datetime.now())
-        year = timestamp[:4]
+        year = int(timestamp[:4])
         requete = "SELECT sport, points FROM tableauScore WHERE tableauScore.year={0} AND tableauScore.player='{1}';".format(year, player)
         result = cur.execute(requete)
-        print(result)
-        result_fetched = result.fetchone()
-        print(result_fetched)
-    sent_message = emojize("Scores de {}:\nblah".format(player), use_aliases=True)
-    bot.sendMessage(chat_id = chat_id, text=sent_message)
+        score_list = result.fetchall()
+        print(score_list)
+    
+    sent_message = emojize("Scores de {}:\n\n".format(maj(player)), use_aliases=True)
+
+    n = 0
+    for (sport, points) in score_list:
+        n += 1
+        sent_message+="{} points pour {}\n".format(points, sport)
+    
+    bot.sendMessage(chat_id = chat_id, text=sent_message, parse_mode='Markdown')
+
 
 def bot_leaderboard(bot, command):
     
-    conn = sqlite3.connect('scores.db', timeout = 1000)
+    conn = sqlite3.connect(database, timeout = 1000)
     with conn:
         cur = conn.cursor()
         timestamp = str(datetime.datetime.now())
-        year = timestamp[:4]
+        year = int(timestamp[:4])
         requete = 'SELECT player, sum(points) FROM tableauScore WHERE tableauScore.year = {0} GROUP BY player;'.format(year)
         scores_list = cur.execute(requete).fetchall()
         print(scores_list)
@@ -90,9 +102,109 @@ def bot_leaderboard(bot, command):
     sent_message = emojize(sent_message, use_aliases=True)
     bot.sendMessage(chat_id = chat_id, text=sent_message, parse_mode='Markdown')
 
+def bot_table(bot, command):
+    
+    conn = sqlite3.connect(database, timeout = 1000)
+    with conn:
+        cur = conn.cursor()
+        timestamp = str(datetime.datetime.now())
+        year = int(timestamp[:4])
+        
+        # Tableau Général
+        requete = 'SELECT player, sport, points FROM tableauScore WHERE tableauScore.year = {0};'.format(year)
+        scores_list = cur.execute(requete).fetchall()
+        scores_list.sort(key=lambda x: x[0]) #Trie
+        liste_scores_players = organize(scores_list)
+        
+        # Totaux
+        requete = 'SELECT player, sum(points) FROM tableauScore WHERE tableauScore.year = {0} GROUP BY player;'.format(year)
+        totaux_list = cur.execute(requete).fetchall()
+        totaux_list.sort(key=lambda x: x[1]) #Trie
+        totaux_list = totaux_list[::-1] #Dans le bon ordre
+
+        #Sports
+        requete = 'SELECT * FROM tableauScore WHERE tableauScore.year = {0} GROUP BY sport;'.format(year)
+        sports_list = select(cur.execute(requete).fetchall(), 3)
+        sports_list.sort()
+        
+        
+        print("\nTotaux : ", totaux_list)
+        print("\nSports : ", sports_list)
+        print("\nGen : ",scores_list)
+        print("\nTrié : ",liste_scores_players)
+        print("\nFind : ",find_points(liste_scores_players, "papa", sports_list))
+
+    sent_message = ":trophy: *Recap général* :trophy:\n\n"
+    sent_message += "``` Tot  Nom   "
+    for item in sports_list:
+        sent_message += maj(item[0])+" "
+    sent_message += ""
+    n = 0
+    liste_emojis = ["🥇", "🥈", "🥉", "  ", "  ", "  ", "  ", "  ", "  ", "  "]
+    for (player, points) in totaux_list:
+        n += 1
+        sent_message+="\n{}{} {} ".format(normal(points),liste_emojis[n-1], normal_name(maj(player)))
+        for (sport, points_by_category) in find_points(liste_scores_players, player, sports_list):
+            if points_by_category == 0:
+                sent_message+="- "
+            else:
+                sent_message+="{} ".format(abs(points_by_category))
+        sent_message += ""
+    sent_message += "``` \n\n("
+    for sport in sports_list:
+        sent_message += "{} ".format(maj(sport))
+    sent_message = emojize(sent_message+")", use_aliases=True)
+    bot.sendMessage(chat_id = chat_id, text=sent_message, parse_mode='Markdown')
+
+
 def maj(s):
     return s[0].upper()+s[1:].lower()
 
+def normal(s):
+    s = str(s)
+    if len(s) < 2:
+            return " "+s
+    else:
+            return s
+
+def normal_name(s):
+    if len(s) > 6:
+            return s[:6]
+    elif len(s) == 6:
+        return s
+    else:
+            return normal_name(s+" ")
+
+def organize(l):
+    d = {}
+    for item in l:
+        if item[0] in d:
+            d[item[0]]+=[item[1:]]
+        else:
+            d[item[0]]=[item[1:]]
+    list_by_player=list(d.items())
+    #[x[n] for x in elements]
+    return list_by_player
+
+def find_points(l, player, sports):
+    for item in l:
+        if item[0] == player:
+            liste = item[1]
+    for sport in sports:
+        for (sport_renseigne, pts_renseignes) in liste:
+            if sport == sport_renseigne:
+                break
+        else:
+            liste.append((sport, 0))
+    liste.sort(key=lambda x: x[0])
+    print("FindP", liste)
+    return liste
+
+def select(l,index):
+    ll=[]
+    for item in l:
+        ll.append(item[index])
+    return ll
 
 def handle(msg):
     print(msg)
@@ -121,9 +233,12 @@ def handle(msg):
             bot_player(bot, command)
         else:
             bot.sendMessage(chat_id = chat_id, text="Il manque des mots pour cette commande")
-    elif command[0] in ['/scores']:
+    elif command[0] in ['/general']:
         print(command)
         bot_leaderboard(bot, command)
+    elif command[0] in ['/scores']:
+        print(command)
+        bot_table(bot, command)
 
 try:
     bot = telepot.Bot(token)
@@ -133,7 +248,7 @@ try:
 
     while True:
         #schedule.run_pending()
-        time.sleep(1000)
+        time.sleep(10)
 
 except telepot.exception.TelegramError as err:
     print('{datetime} : Telegram Error'.format(datetime=datetime.datetime.now()))
