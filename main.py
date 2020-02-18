@@ -25,19 +25,19 @@ con.commit()
 
 # Commands
 def bot_testing(bot):
-    bot.sendMessage(chat_id = chat_id, text=emojize("Ceci 🥇 est un <b>test</b>", use_aliases=True), parse_mode='html')
+    bot.sendMessage(chat_id = chat_id, text=emojize("Ceci est un <b>test</b>", use_aliases=True), parse_mode='html')
 
 
 def bot_add_points(bot, command):
     (points, player, sport) = command[3], command[1], command[2]
-    sent_message = "Ajout de {0} points a {1} pour {2}".format(points, maj(player), sport)
+    sent_message = "Ajout de {0} points à {1} pour {2}".format(points, maj(player), sport)
     conn = sqlite3.connect(database, timeout = 1000)
     with conn:
         cur = conn.cursor()
         timestamp = str(datetime.datetime.now())
-        print(timestamp)
+        #print(timestamp)
         year = timestamp[:4]
-        print(year)
+        #print(year)
         requete = 'INSERT INTO tableauScore (timestamp, year, player, sport, points) VALUES ("{0}", {1}, "{2}", "{3}", "{4}");'.format(timestamp, year, player, sport, points)
         cur.execute(requete)
     bot.sendMessage(chat_id = chat_id, text=sent_message)
@@ -69,7 +69,7 @@ def bot_player(bot, command):
         requete = "SELECT sport, points FROM tableauScore WHERE tableauScore.year={0} AND tableauScore.player='{1}';".format(year, player)
         result = cur.execute(requete)
         score_list = result.fetchall()
-        print(score_list)
+        #print(score_list)
     
     sent_message = emojize("Scores de {}:\n\n".format(maj(player)), use_aliases=True)
 
@@ -90,7 +90,7 @@ def bot_leaderboard(bot, command):
         year = int(timestamp[:4])
         requete = 'SELECT player, sum(points) FROM tableauScore WHERE tableauScore.year = {0} GROUP BY player;'.format(year)
         scores_list = cur.execute(requete).fetchall()
-        print(scores_list)
+        #print(scores_list)
         scores_list.sort(key=lambda x: x[1]) #Trie
         scores_list = scores_list[::-1] #Dans le bon ordre
 
@@ -127,12 +127,12 @@ def bot_table(bot, command):
         sports_list = select(cur.execute(requete).fetchall(), 3)
         sports_list.sort()
         
-        
-        print("\nTotaux : ", totaux_list)
-        print("\nSports : ", sports_list)
-        print("\nGen : ",scores_list)
+        #Débug
+        #print("\nTotaux : ", totaux_list)
+        #print("\nSports : ", sports_list)
+        #print("\nGen : ",scores_list)
         print("\nTrié : ",liste_scores_players)
-        print("\nFind : ",find_points(liste_scores_players, "papa", sports_list))
+        #print("\nFind : ",find_points(liste_scores_players, "papa", sports_list))
 
     sent_message = ":trophy: *Recap général* :trophy:\n\n"
     sent_message += "``` Tot  Nom   "
@@ -179,7 +179,15 @@ def organize(l):
     d = {}
     for item in l:
         if item[0] in d:
-            d[item[0]]+=[item[1:]]
+            print(d[item[0]])
+            n = 0
+            for (sport, _) in d[item[0]]:
+                if sport == item[1]:
+                    d[item[0]][n] = (d[item[0]][n][0], d[item[0]][n][1] + item[2])
+                    break
+                n += 1
+            else:
+                d[item[0]]+=[item[1:]]
         else:
             d[item[0]]=[item[1:]]
     list_by_player=list(d.items())
@@ -191,13 +199,12 @@ def find_points(l, player, sports):
         if item[0] == player:
             liste = item[1]
     for sport in sports:
-        for (sport_renseigne, pts_renseignes) in liste:
+        for (sport_renseigne, _) in liste:
             if sport == sport_renseigne:
                 break
         else:
             liste.append((sport, 0))
     liste.sort(key=lambda x: x[0])
-    print("FindP", liste)
     return liste
 
 def select(l,index):
@@ -207,37 +214,30 @@ def select(l,index):
     return ll
 
 def handle(msg):
-    print(msg)
     if 'text' in msg:
         command = msg['text'].lower().replace('@', ' ').split(' ')
         if 'quimgames_bot' in command:
             command.remove('quimgames_bot')
     if command[0] in ['/test']:
-        print(command)
         bot_testing(bot)
     elif command[0] in ['/ajouter']:
-        print(command)
         if len(command) >= 4:
             bot_add_points(bot, command)
         else:
             bot.sendMessage(chat_id = chat_id, text="Il manque des mots pour cette commande")
     elif command[0] in ['/penalite']:
-        print(command)
         if len(command) >= 3:
             bot_remove_points(bot, command)
         else:
             bot.sendMessage(chat_id = chat_id, text="Il manque des mots pour cette commande")
     elif command[0] in ['/score']:
-        print(command)
         if len(command) >= 2:
             bot_player(bot, command)
         else:
             bot.sendMessage(chat_id = chat_id, text="Il manque des mots pour cette commande")
     elif command[0] in ['/general']:
-        print(command)
         bot_leaderboard(bot, command)
     elif command[0] in ['/scores']:
-        print(command)
         bot_table(bot, command)
 
 try:
