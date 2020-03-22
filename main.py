@@ -131,7 +131,7 @@ def bot_table(bot, command):
         #print("\nTotaux : ", totaux_list)
         #print("\nSports : ", sports_list)
         #print("\nGen : ",scores_list)
-        print("\nTrié : ",liste_scores_players)
+        #print("\nTrié : ",liste_scores_players)
         #print("\nFind : ",find_points(liste_scores_players, "papa", sports_list))
 
     sent_message = ":trophy: *Recap général* :trophy:\n\n"
@@ -179,7 +179,7 @@ def organize(l):
     d = {}
     for item in l:
         if item[0] in d:
-            print(d[item[0]])
+            #print(d[item[0]])
             n = 0
             for (sport, _) in d[item[0]]:
                 if sport == item[1]:
