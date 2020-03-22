@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 #from telegram.ext import Updater, CommandHandler
 import requests
 import re
@@ -30,7 +33,7 @@ def bot_testing(bot):
 
 def bot_add_points(bot, command):
     (points, player, sport) = command[3], command[1], command[2]
-    sent_message = "Ajout de {0} points à {1} pour {2}".format(points, maj(player), sport)
+    sent_message = "Ajout de {0} points a {1} pour {2}".format(points, maj(player), sport)
     conn = sqlite3.connect(database, timeout = 1000)
     with conn:
         cur = conn.cursor()
@@ -46,7 +49,7 @@ def bot_add_points(bot, command):
 
 def bot_remove_points(bot, command):
     (points, player) = -abs(int(command[2])), command[1]
-    sent_message = "Pénalité !\n{0} a pris une amende de {1} points...".format(player, points)
+    sent_message = "Penalite !\n{0} a pris une amende de {1} points...".format(player, points)
     conn = sqlite3.connect(database, timeout = 1000)
     with conn:
         cur = conn.cursor()
@@ -94,7 +97,7 @@ def bot_leaderboard(bot, command):
         scores_list.sort(key=lambda x: x[1]) #Trie
         scores_list = scores_list[::-1] #Dans le bon ordre
 
-    sent_message = ":trophy: *Classement général* :trophy:\n\n"
+    sent_message = ":trophy: *Classement general* :trophy:\n\n"
     n = 0
     for (player, points) in scores_list:
         n += 1
@@ -110,7 +113,7 @@ def bot_table(bot, command):
         timestamp = str(datetime.datetime.now())
         year = int(timestamp[:4])
         
-        # Tableau Général
+        # Tableau General
         requete = 'SELECT player, sport, points FROM tableauScore WHERE tableauScore.year = {0};'.format(year)
         scores_list = cur.execute(requete).fetchall()
         scores_list.sort(key=lambda x: x[0]) #Trie
@@ -127,15 +130,15 @@ def bot_table(bot, command):
         sports_list = select(cur.execute(requete).fetchall(), 3)
         sports_list.sort()
         
-        #Débug
+        #Debug
         #print("\nTotaux : ", totaux_list)
         #print("\nSports : ", sports_list)
         #print("\nGen : ",scores_list)
         print("\nTrié : ",liste_scores_players)
         #print("\nFind : ",find_points(liste_scores_players, "papa", sports_list))
 
-    sent_message = ":trophy: *Recap général* :trophy:\n\n"
-    sent_message += "``` Tot  Nom   "
+    sent_message = ":trophy: *Recap general* :trophy:\n\n"
+    sent_message += "``` Tot  Nom    "
     for item in sports_list:
         sent_message += maj(item[0])+" "
     sent_message += ""
@@ -168,9 +171,9 @@ def normal(s):
             return s
 
 def normal_name(s):
-    if len(s) > 6:
-            return s[:6]
-    elif len(s) == 6:
+    if len(s) > 7:
+            return s[:7]
+    elif len(s) == 7:
         return s
     else:
             return normal_name(s+" ")
@@ -244,7 +247,7 @@ try:
     bot = telepot.Bot(token)
     bot.message_loop(handle)
     #schedule.every(9*60+18).minutes.do(quote)
-    print("QuimGames Bot lancé !")
+    print("QuimGames Bot lance !")
 
     while True:
         #schedule.run_pending()
